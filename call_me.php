@@ -32,46 +32,63 @@ if(isset($_SESSION['username'])) {
         }
     }
 
-    if (isset($_POST['send_image'])) {
-        $image_name = $_FILES['photo']['name'];
-        $image_location = $_FILES['photo']['tmp_name'];
+    if (isset($_POST['send_file'])) {
+    //    $chat_files_error =  add_chat_files($_FILES['files']);
+        $files = $_FILES['files'];
+        $files_errors = array();
+        $array_extension = array("jpg", "gif", "jpeg", "png");
 
-        $types_array = array("jpg", "png", "gif");
-        $type = end(explode(".", $image_name));
+        for($i=0; $i < count($files['name']); $i++) {
 
-        if(in_array($type, $types_array)){
-            $random = rand(0,1000000000);
-            $photo_name =  $random . "_" . $image_name;
-            $image_upload = "./upload/chat_imgs/$photo_name";
+            if($files['error'][$i] == 0) {
+                
+                $file_extension = strtolower(end(explode(".", $files['name'][$i])));
 
-            if (isset($_GET['u_id'])) {
-                $check =  check_value("user_id", "users", "user_id", $_GET['u_id']);
-               if(! empty($check)) {
-                    if (move_uploaded_file($image_location, $image_upload)) {
-                        $stmt = $conn->prepare("INSERT INTO pictures(image_name, image_from_id, image_to_id)
-                                                VALUES(? ,?, ?)");
-                        $stmt->execute(array($image_upload, $_SESSION['user_id'], $_GET['u_id']));
-                        if ($stmt->rowCount() >= 1) {
-                            $stmt = $conn->prepare("UPDATE users SET date_time = NOW() WHERE user_id = ? OR user_id = ?");
-                            $stmt->execute(array($_SESSION['user_id'], $_GET['u_id']));
+                if(in_array($file_extension, $array_extension)) {
+                    $file_location = $files['tmp_name'][$i];
+
+                    $random  = rand(1, 10000000);
+                    $file_upload = "/backend_project/faceyou/upload/chat_imgs/" . $random . "_" . $files['name'][$i];
+                    $file_upload_to_database = "./upload/chat_imgs/" . $random . "_" . $files['name'][$i];
+
+                    if(move_uploaded_file($file_location, $_SERVER['DOCUMENT_ROOT'] .  $file_upload)) {
+                        
+                        if (isset($_GET['u_id'])) {
+                            $check =  check_value("user_id", "users", "user_id", $_GET['u_id']);
+                            if(! empty($check)) {
+                                $stmt = $conn->prepare("INSERT INTO pictures(image_name, image_from_id, image_to_id)
+                                                        VALUES(? ,?, ?)");
+                                $stmt->execute(array($file_upload_to_database, $_SESSION['user_id'], $_GET['u_id']));
+                                if ($stmt->rowCount() > 0) {
+                                    $stmt = $conn->prepare("UPDATE users SET date_time = NOW() WHERE user_id = ? OR user_id = ?");
+                                    $stmt->execute(array($_SESSION['user_id'], $_GET['u_id']));
+                                }
+                            }
+                        }
+
+                        if (isset($_GET['g_id'])) {
+                            $check =  check_value("group_id", "groups", "group_id", $_GET['g_id']);
+                            if(! empty($check)) {
+                                $stmt = $conn->prepare("INSERT INTO pictures(image_name, image_from_id, image_to_id)
+                                                        VALUES(?,?,?)");
+                                $stmt->execute(array($file_upload_to_database, $_SESSION['user_id'], $_GET['g_id']));
+                                if ($stmt->rowCount() > 0) {
+                                    $stmt = $conn->prepare("UPDATE groups SET g_date_time = NOW() WHERE group_id = ?");
+                                    $stmt->execute(array($_GET['g_id']));
+                                }
+                            }
                         }
                     }
+                    else {
+                        $files_errors[] = "Error, File " . ($i + 1) . " Not Add, Please Try Again!";
+                    }
+                }
+                else {
+                    $files_errors[] = "Extension File " . ($i + 1) . " Not Exist";
                 }
             }
-
-            if (isset($_GET['g_id'])) {
-                $check =  check_value("group_id", "groups", "group_id", $_GET['g_id']);
-                if(! empty($check)) {
-                    if (move_uploaded_file($image_location, $image_upload)) {
-                        $stmt = $conn->prepare("INSERT INTO pictures(image_name, image_from_id, image_to_id)
-                                                VALUES(?,?,?)");
-                        $stmt->execute(array($image_upload, $_SESSION['user_id'], $_GET['g_id']));
-                        if ($stmt->rowCount() >= 1) {
-                            $stmt = $conn->prepare("UPDATE groups SET g_date_time = NOW() WHERE group_id = ?");
-                            $stmt->execute(array($_GET['g_id']));
-                        }
-                    }
-                }
+            elseif ($files['error'][$i] == 4) {
+                $files_errors[] = "File " . ($i + 1) . " Is Empty, Please Try Again!";
             }
         }
     }
@@ -481,7 +498,17 @@ if(isset($_SESSION['username'])) {
                                     }}
                                 }
                         }
-
+                        // if(isset($files_errors)) {
+                        //     foreach ($files_errors as $error) {
+                        //         echo "
+                        //             <div class='my'>
+                        //                 <div class='my-messages'>
+                        //                     <p>$error</p>
+                        //                 </div>
+                        //             </div>
+                        //             ";
+                        //     }
+                        // }
                         if (isset($_GET['g_id'])) {
                             $check =  check_value("group_id", "groups", "group_id", $_GET['g_id']);
                             if(! empty($check)) {
@@ -585,9 +612,9 @@ if(isset($_SESSION['username'])) {
                                 <button type='submit' name='send_message'>Send</button>
                             </form>
                             <form class='send-image' action='' method='post' enctype='multipart/form-data'>
-                                    <input type='file' name = 'photo' id='file' >
+                                    <input type='file' name = 'files[]' id='file' multiple='multiple'>
                                     <label for='file' >Images</label>
-                                <button type='submit' name='send_image'>Send</button>
+                                <button type='submit' name='send_file'>Send</button>
                             </form>
 
                         </div>

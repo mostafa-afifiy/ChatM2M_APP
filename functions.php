@@ -245,15 +245,10 @@ function add_new_group($group_name, $photo, $friends_array)
                                     ");
             $stmt->execute(array($_SESSION['user_id']));
             $array_group_names = array();
-            // echo "<pre>";
-            // print_r($data);
-            // echo "</pre>";
+            
             while ($data = $stmt->fetch()){
                 $array_group_names[] = $data['group_name'];
             }
-           
-            // $group_error[] = " $data";
-            // return $group_error;
             if(! in_array($filter_group_name, $array_group_names)) {
 
                
@@ -263,7 +258,7 @@ function add_new_group($group_name, $photo, $friends_array)
 
                 $array_of_type_images = array("jpg", "png", "gif");
 
-                $type_image = end(explode('.', $photo_name));
+                $type_image = strtolower(end(explode('.', $photo_name)));
 
                 if(in_array($type_image, $array_of_type_images)){
 
