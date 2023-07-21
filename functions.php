@@ -2,13 +2,50 @@
 session_start();
 require "config.php";
 
-function check_value($select, $table, $where, $value)
+$session_user_id = $_SESSION['user_id'];
+
+function check_value($select, $table, $where, $value, $all = NULL)
 {
     global $conn;
-    $stmt = $conn->prepare("SELECT $select FROM $table WHERE $where = ?");
-    $stmt->execute(array($value));
-    $result = $stmt->fetch();
-
+    if($all == NULL) {
+        if($table == "users") {
+            $stmt = $conn->prepare("SELECT $select
+                                    FROM $table
+                                    WHERE $where
+                                    IN (
+                                        SELECT user_id 
+                                        FROM friends 
+                                        WHERE user_id = :friend_id1 AND friend_id = :user_id1) 
+                                        OR user_id 
+                                    IN(
+                                        SELECT friend_id 
+                                        FROM friends 
+                                        WHERE friend_id = :friend_id2 AND user_id = :user_id2)");
+            $stmt->execute(array(
+                "friend_id1" => $value,
+                "user_id1" => $_SESSION['user_id'],
+                "friend_id2" => $value,
+                "user_id2" => $_SESSION['user_id']
+            ));
+            $result = $stmt->fetch();
+        }
+        elseif($table == "group_members") {
+            $stmt = $conn->prepare("SELECT $select
+                                    FROM $table 
+                                    WHERE $where = :u_id 
+                                    AND group_id = :g_id");
+            $stmt->execute(array(
+                "u_id" => $_SESSION['user_id'],
+                "g_id" => $value
+            ));
+            $result = $stmt->fetch();
+        }
+    }
+    else {
+        $stmt = $conn->prepare("SELECT $select FROM $table WHERE $where = ?");
+        $stmt->execute(array($value));
+        $result = $stmt->fetch();
+    }
     return $result;
 }
 
@@ -48,8 +85,8 @@ function registerUser($username, $email, $password, $confirm_password)
 
 
     if(empty($error_array)) {
-        $check_user = check_value("username", "users", "username", $filter_username);
-        $check_email = check_value("email", "users", "email", $filter_email);
+        $check_user = check_value("username", "users", "username", $filter_username, "all");
+        $check_email = check_value("email", "users", "email", $filter_email, "all");
         
         if ($check_user != NULL) {
             $error_array[] = "Username already exists, Please use a different username";
@@ -62,7 +99,7 @@ function registerUser($username, $email, $password, $confirm_password)
         if(empty($error_array)) {
 
             $stmt = $conn->prepare("INSERT INTO users(username, email, pass) VALUES(?, ?, ?)");
-            $stmt->execute(array($filter_username, $filter_email, sha1($password)));
+            $stmt->execute(array($filter_username, $filter_email, password_hash($password, PASSWORD_DEFAULT)));
             $count = $stmt->rowCount();
             if($count > 0) {
                 $_SESSION['username'] = $filter_username;
@@ -127,9 +164,6 @@ function info($birthday, $gender, $photo)
             $info_error[] = "Image not uploaded, Please try again";
             return $info_error;
         }     
-        // } else {
-        //     return "Image Wasn't Uploaded, Please try again!";
-        // }
     } else return $info_error;
 }
 
@@ -157,26 +191,20 @@ function loginUser($username, $password)
     }
 
     if(empty($form_error)) {
-        $result = check_value("user_id, pass", "users", "username", $filter_user);
-        // echo "<pre>";
-        // print_r($result);
-        // echo "</pre>";
+        $result = check_value("user_id, pass", "users", "username", $filter_user, "all");
         
-
         if (empty($result)) {
             $form_error[] = "Wrong Username or Password";
             return $form_error;
         }
         else {
-            if($result['pass'] != sha1($password)){
+            if( !password_verify($password, $result['pass'])){
                 $form_error[] = "Wrong Password!";
                 return $form_error;
             }
             else{
                 $_SESSION['user_id'] = $result['user_id'];
                 $_SESSION['username'] = $filter_user;
-                // echo "i am here";
-                // print_r($_SESSION);
                 header("location: call_me.php");
                 exit();
             }
@@ -313,4 +341,30 @@ function add_new_group($group_name, $photo, $friends_array)
             }
         }
     }else return $group_error;
+}
+
+function messages_status($friend_id, $status) {
+
+    global $conn;
+    if($status == 0) {
+        $stmt = $conn->prepare("SELECT count(msg_status) as 'count_msg' 
+                                FROM messages 
+                                WHERE from_id = ? 
+                                AND to_id = ? 
+                                AND msg_status = ? ");
+        $stmt->execute(array($friend_id, $_SESSION['user_id'], $status));
+        $result = $stmt->fetch();
+        return $result['count_msg'];
+    }
+    elseif($status == 1) {
+        $stmt = $conn->prepare("UPDATE messages SET msg_status = ?
+                                WHERE from_id = ? 
+                                AND to_id = ? 
+                                AND msg_status = ? ");
+        $result = $stmt->fetch(); 
+        $stmt->execute(array($status, $friend_id, $_SESSION['user_id'], 0));
+        $result = $stmt->rowCount();
+        return $result;
+    }
+    
 }

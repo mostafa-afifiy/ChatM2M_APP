@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Jul 14, 2023 at 07:41 AM
+-- Generation Time: Jul 21, 2023 at 08:23 AM
 -- Server version: 10.4.27-MariaDB
 -- PHP Version: 8.2.0
 
@@ -33,13 +33,6 @@ CREATE TABLE `friends` (
   `friend_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
---
--- Dumping data for table `friends`
---
-
-INSERT INTO `friends` (`fr_id`, `user_id`, `friend_id`) VALUES
-(126, 41, 40);
-
 -- --------------------------------------------------------
 
 --
@@ -54,14 +47,6 @@ CREATE TABLE `groups` (
   `user_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
---
--- Dumping data for table `groups`
---
-
-INSERT INTO `groups` (`group_id`, `group_name`, `group_image`, `g_date_time`, `user_id`) VALUES
-(60, 'pdo_group', './upload/avatar/953994917_backiee-194320-landscape.jpg', '2023-07-14 03:40:45', 40),
-(61, 'pdo_group1', './upload/avatar/445178819_backiee-194320-landscape.jpg', '2023-07-14 03:44:47', 40);
-
 -- --------------------------------------------------------
 
 --
@@ -74,14 +59,6 @@ CREATE TABLE `group_members` (
   `user_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
---
--- Dumping data for table `group_members`
---
-
-INSERT INTO `group_members` (`id`, `group_id`, `user_id`) VALUES
-(76, 61, 40),
-(77, 61, 41);
-
 -- --------------------------------------------------------
 
 --
@@ -93,21 +70,9 @@ CREATE TABLE `messages` (
   `message_info` text NOT NULL,
   `date_time` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `from_id` int(11) NOT NULL,
-  `to_id` int(11) NOT NULL
+  `to_id` int(11) NOT NULL,
+  `msg_status` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
-
---
--- Dumping data for table `messages`
---
-
-INSERT INTO `messages` (`msg_id`, `message_info`, `date_time`, `from_id`, `to_id`) VALUES
-(311, 'السلام عليكم ورحمه الله وبركاته', '2023-07-14 03:37:06', 41, 40),
-(312, 'how are you?', '2023-07-14 03:37:16', 41, 40),
-(313, 'وعليكم السلام ورحمه الله وبركاته', '2023-07-14 03:38:40', 40, 41),
-(314, 'I am fine and you', '2023-07-14 03:39:16', 40, 41),
-(315, 'السلام عليكم ورحمه الله وبركاته', '2023-07-14 03:42:45', 40, 61),
-(316, 'now we talk in group', '2023-07-14 03:43:34', 40, 61),
-(317, 'السلام عليكم ورحمه الله وبركاته', '2023-07-14 03:44:47', 41, 61);
 
 -- --------------------------------------------------------
 
@@ -121,14 +86,6 @@ CREATE TABLE `pictures` (
   `image_to_id` int(11) NOT NULL,
   `image_date_time` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
-
---
--- Dumping data for table `pictures`
---
-
-INSERT INTO `pictures` (`image_name`, `image_from_id`, `image_to_id`, `image_date_time`) VALUES
-('./upload/chat_imgs/927977122_backiee-194320-landscape.jpg', 41, 40, '2023-07-14 03:37:32'),
-('./upload/chat_imgs/774005938_backiee-194320-landscape.jpg', 40, 61, '2023-07-14 03:43:48');
 
 -- --------------------------------------------------------
 
@@ -148,14 +105,6 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `users`
---
-
-INSERT INTO `users` (`user_id`, `username`, `birthday`, `gender`, `image`, `date_time`, `email`, `pass`) VALUES
-(40, 'mostafa', '2023-07-04', 'male', './upload/avatar/838424874_backiee-203387-landscape.jpg', '2023-07-14 03:39:16', 'a.dfm@ma.com', '8cb2237d0679ca88db6464eac60da96345513964'),
-(41, 'amer1', '2023-07-11', 'male', './upload/avatar/854684062_backiee-203387-landscape.jpg', '2023-07-14 03:39:16', 'amer@mostafa.com', '8cb2237d0679ca88db6464eac60da96345513964');
-
---
 -- Indexes for dumped tables
 --
 
@@ -171,7 +120,9 @@ ALTER TABLE `friends`
 --
 ALTER TABLE `groups`
   ADD PRIMARY KEY (`group_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `group_name` (`group_name`) USING BTREE,
+  ADD KEY `indx_group_name` (`group_name`);
 
 --
 -- Indexes for table `group_members`
@@ -201,7 +152,9 @@ ALTER TABLE `users`
   ADD PRIMARY KEY (`user_id`),
   ADD UNIQUE KEY `name` (`username`),
   ADD UNIQUE KEY `email` (`email`),
-  ADD UNIQUE KEY `username` (`username`);
+  ADD UNIQUE KEY `username` (`username`),
+  ADD KEY `indx_username` (`username`),
+  ADD KEY `indx_email` (`email`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -211,31 +164,31 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `friends`
 --
 ALTER TABLE `friends`
-  MODIFY `fr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=127;
+  MODIFY `fr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=147;
 
 --
 -- AUTO_INCREMENT for table `groups`
 --
 ALTER TABLE `groups`
-  MODIFY `group_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
+  MODIFY `group_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87;
 
 --
 -- AUTO_INCREMENT for table `group_members`
 --
 ALTER TABLE `group_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=78;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=97;
 
 --
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `msg_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=318;
+  MODIFY `msg_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=357;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- Constraints for dumped tables

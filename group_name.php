@@ -37,8 +37,6 @@ if($_SERVER['REQUEST_METHOD'] == "POST") {
                 <input type="file" name = "photo" id="file">
                 <label for="file">Add Photo</label>
             </div>
-
-            <!-- <label>Group Name</label> -->
                 <input type="text" name="group_name" placeholder="Enter Group Name" >
             </div> 
                 <div class='friends-room'>

@@ -313,6 +313,23 @@ header .main-link>li>a:hover::before {
     font-weight: bold;
 }
 
+.landing .friends-room span {
+    width: 32px;
+    height: 32px;
+    background: #32bf38;
+    color: white;
+    font-weight: bold;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    font-size: 15px;
+    position: absolute;
+    right: 6px;
+}
+.landing .friends-room .active-span { 
+    display: flex;
+}
 .landing .message-box {
     display: flex;
     flex-direction: column;

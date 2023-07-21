@@ -1,31 +1,38 @@
 <?php
 ob_start();
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 include "functions.php";
 
 if(isset($_SESSION['username'])) {
     if (isset($_POST['send_message'])) {
         $message = $_POST['enter_message'];
-        if ($message != "") {
-            if (isset($_GET['u_id'])) {
-               $check =  check_value("user_id", "users", "user_id", $_GET['u_id']);
+        if (! empty($message)) {
+            if (isset($_GET['u_id']) && ! empty($_GET['u_id'])) {
+                $u_id = filter_var($_GET['u_id'], FILTER_SANITIZE_NUMBER_INT);
+
+               $check =  check_value("user_id", "users", "user_id", $u_id);
                if(! empty($check)) {
                     $stmt = $conn->prepare("INSERT INTO messages(message_info, from_id, to_id) VALUES(?,?,?)");
-                    $stmt->execute(array($message, $_SESSION['user_id'], $_GET['u_id']));
+                    $stmt->execute(array($message, $_SESSION['user_id'], $u_id));
                     if ($stmt->rowCount() > 0) {
                         $stmt = $conn->prepare("UPDATE users SET date_time = NOW() WHERE user_id = ? OR user_id = ?");
-                        $stmt->execute(array($_SESSION['user_id'], $_GET['u_id']));
+                        $stmt->execute(array($_SESSION['user_id'], $u_id));
                     }
                 }
             }
 
-            if (isset($_GET['g_id'])) {
-                $check =  check_value("group_id", "groups", "group_id", $_GET['g_id']);
+            if (isset($_GET['g_id']) && ! empty($_GET['g_id'])) {
+                $g_id = filter_var($_GET['g_id'], FILTER_SANITIZE_NUMBER_INT);
+                    
+                $check =  check_value("group_id", "group_members", "user_id", $g_id);
                 if(! empty($check)) {
                     $stmt = $conn->prepare("INSERT INTO messages(message_info, from_id, to_id) VALUES(?, ?, ?)");
-                    $stmt->execute(array($message, $_SESSION['user_id'],$_GET['g_id']));
+                    $stmt->execute(array($message, $_SESSION['user_id'],$g_id));
                     if ($stmt->rowCount() >= 1) {
                         $stmt = $conn->prepare("UPDATE groups SET g_date_time = NOW() WHERE group_id = ?");
-                        $stmt->execute(array($_GET['g_id']));
+                        $stmt->execute(array($g_id));
                     }
                 }
             }
@@ -33,7 +40,6 @@ if(isset($_SESSION['username'])) {
     }
 
     if (isset($_POST['send_file'])) {
-    //    $chat_files_error =  add_chat_files($_FILES['files']);
         $files = $_FILES['files'];
         $files_errors = array();
         $array_extension = array("jpg", "gif", "jpeg", "png");
@@ -42,7 +48,8 @@ if(isset($_SESSION['username'])) {
 
             if($files['error'][$i] == 0) {
                 
-                $file_extension = strtolower(end(explode(".", $files['name'][$i])));
+                $file_name_as_array = explode(".", $files['name'][$i]);
+                $file_extension = strtolower(end($file_name_as_array));
 
                 if(in_array($file_extension, $array_extension)) {
                     $file_location = $files['tmp_name'][$i];
@@ -53,28 +60,32 @@ if(isset($_SESSION['username'])) {
 
                     if(move_uploaded_file($file_location, $_SERVER['DOCUMENT_ROOT'] .  $file_upload)) {
                         
-                        if (isset($_GET['u_id'])) {
-                            $check =  check_value("user_id", "users", "user_id", $_GET['u_id']);
+                        if (isset($_GET['u_id']) && ! empty($_GET['u_id'])) {
+                            $u_id = filter_var($_GET['u_id'], FILTER_SANITIZE_NUMBER_INT);
+
+                            $check =  check_value("user_id", "users", "user_id", $u_id);
                             if(! empty($check)) {
                                 $stmt = $conn->prepare("INSERT INTO pictures(image_name, image_from_id, image_to_id)
                                                         VALUES(? ,?, ?)");
-                                $stmt->execute(array($file_upload_to_database, $_SESSION['user_id'], $_GET['u_id']));
+                                $stmt->execute(array($file_upload_to_database, $_SESSION['user_id'], $u_id));
                                 if ($stmt->rowCount() > 0) {
                                     $stmt = $conn->prepare("UPDATE users SET date_time = NOW() WHERE user_id = ? OR user_id = ?");
-                                    $stmt->execute(array($_SESSION['user_id'], $_GET['u_id']));
+                                    $stmt->execute(array($_SESSION['user_id'], $u_id));
                                 }
                             }
                         }
 
-                        if (isset($_GET['g_id'])) {
-                            $check =  check_value("group_id", "groups", "group_id", $_GET['g_id']);
+                        if (isset($_GET['g_id']) && ! empty($_GET['g_id'])) {
+                            $g_id = filter_var($_GET['g_id'], FILTER_SANITIZE_NUMBER_INT);
+                               
+                            $check =  check_value("group_id", "group_members", "user_id", $g_id);
                             if(! empty($check)) {
                                 $stmt = $conn->prepare("INSERT INTO pictures(image_name, image_from_id, image_to_id)
                                                         VALUES(?,?,?)");
-                                $stmt->execute(array($file_upload_to_database, $_SESSION['user_id'], $_GET['g_id']));
+                                $stmt->execute(array($file_upload_to_database, $_SESSION['user_id'], $g_id));
                                 if ($stmt->rowCount() > 0) {
                                     $stmt = $conn->prepare("UPDATE groups SET g_date_time = NOW() WHERE group_id = ?");
-                                    $stmt->execute(array($_GET['g_id']));
+                                    $stmt->execute(array($g_id));
                                 }
                             }
                         }
@@ -94,7 +105,7 @@ if(isset($_SESSION['username'])) {
     }
 
     if (isset($_POST['add_new_friend'])) {
-        if ($_POST['search_about_new_friend'] != "") {
+        if (! empty($_POST['search_about_new_friend'])) {
             $stmt = $conn->prepare("SELECT user_id FROM users
                                     WHERE username <> :username
                                     AND username = :search_about_new_friend
@@ -107,12 +118,6 @@ if(isset($_SESSION['username'])) {
                                 "user_id" => $_SESSION['user_id'], 
                                 "friend_id" => $_SESSION['user_id']));
             $result = $stmt->fetch();
-
-            // echo "<pre>";
-            // print_r($result);
-            // echo "</pre>";
-            // echo $_SESSION['username'] . "<br>";
-            // echo $_SESSION['user_id'] . "_" . "user_id";
 
             if ($result != null) {
                 if(isset($_SESSION['user_id'])) {
@@ -148,10 +153,12 @@ if(isset($_SESSION['username'])) {
                 </form>
             </div>
                 <?php
-                    if (isset($_GET['u_id'])) {
-                        $check =  check_value("user_id", "users", "user_id", $_GET['u_id']);
+                    if (isset($_GET['u_id']) && ! empty($_GET['u_id'])) {
+                            $u_id = filter_var($_GET['u_id'], FILTER_SANITIZE_NUMBER_INT);
+                            
+                        $check =  check_value("user_id", "users", "user_id", $u_id);
                          if(! empty($check)) {
-                            $data = get_user_name($_GET['u_id']);
+                            $data = get_user_name($u_id);
                             echo "
                                 <div class='username-box'>
                                     <div class='image'>
@@ -166,10 +173,12 @@ if(isset($_SESSION['username'])) {
                          }
                     }
 
-                    if (isset($_GET['g_id'])) {
-                        $check =  check_value("group_id", "groups", "group_id", $_GET['g_id']);
+                    if (isset($_GET['g_id']) && ! empty($_GET['g_id'])) {
+                        $g_id = filter_var($_GET['g_id'], FILTER_SANITIZE_NUMBER_INT);
+                           
+                        $check =  check_value("group_id", "group_members", "user_id", $g_id);
                         if(! empty($check)) {
-                            $data = get_group_name($_GET['g_id']);
+                            $data = get_group_name($g_id);
                             echo "
                                 <div class='username-box'>
                                     <div class='image'>
@@ -226,14 +235,17 @@ if(isset($_SESSION['username'])) {
                                                 AND username LIKE :likes
                                                 ORDER BY date_time DESC
                                                 ");
-                $stmt->execute(array(
+                        $stmt->execute(array(
                                     "username" => $_SESSION['username'], 
                                     "user_id" => $_SESSION['user_id'], 
                                     "friend_id" => $_SESSION['user_id'], 
                                     "likes" => $like));
                         
-                        $arr = [];
+                        $arr = array();
+                        $array_select_id = array();
+
                         while ($result = $stmt->fetch()) {
+                            $array_select_id[] = $result['user_id'];
                             $arr[$result['date_time']] = $result;
                         }
 
@@ -246,7 +258,9 @@ if(isset($_SESSION['username'])) {
                         $stmt->execute(array(
                                         "user_id" => $_SESSION['user_id'], 
                                         "likes" => $like));
+
                         while ($result = $stmt->fetch()) {
+                            $array_select_id[] = $result['group_id'];
                             $arr[$result['g_date_time']] = $result;
                         }
 
@@ -295,7 +309,7 @@ if(isset($_SESSION['username'])) {
                                                 ");
                         $stmt->execute(array($_SESSION['username'], $_SESSION['user_id'], $_SESSION['user_id']));
                         
-                        $arr = [];
+                        $arr = array();
                         while ($result = $stmt->fetch()) {
                             $arr[$result['date_time']] = $result;
                         }
@@ -316,33 +330,37 @@ if(isset($_SESSION['username'])) {
                         foreach ($arr as $values) {
                             foreach ($values as $key => $val) {
                                 if ($key == "username") {
-                                    echo "
-                                        <div class='friends-room'>
-                                            <div class='username-box'>
-                                                <div class='image'>
-                                                    <img src='$values[image]' alt='Photo'>
-                                                </div>
-                                                <div class='username-info'>
-                                                <a href='?u_id=$values[user_id]'>$values[username]</a>
+                                    if(!in_array($values['user_id'], $array_select_id)){
+                                        echo "
+                                            <div class='friends-room'>
+                                                <div class='username-box'>
+                                                    <div class='image'>
+                                                        <img src='$values[image]' alt='Photo'>
+                                                    </div>
+                                                    <div class='username-info'>
+                                                    <a href='?u_id=$values[user_id]'>$values[username]</a>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        ";
-                                    break;
+                                            ";
+                                        break;
+                                    } else break;   
                                 } else if ($key == "group_name") {
-                                    echo "
-                                        <div class='friends-room'>
-                                            <div class='username-box'>
-                                                <div class='image'>
-                                                    <img src='$values[group_image]' alt='Photo'>
-                                                </div>
-                                                <div class='username-info'>
-                                                <a href='?g_id=$values[group_id]'>$values[group_name]</a>
+                                    if(!in_array($values['user_id'], $array_select_id)){
+                                        echo "
+                                            <div class='friends-room'>
+                                                <div class='username-box'>
+                                                    <div class='image'>
+                                                        <img src='$values[group_image]' alt='Photo'>
+                                                    </div>
+                                                    <div class='username-info'>
+                                                    <a href='?g_id=$values[group_id]'>$values[group_name]</a>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        ";
-                                    break;
+                                            ";
+                                        break;
+                                    } else break;   
                                 }
                             }
                         }
@@ -358,7 +376,7 @@ if(isset($_SESSION['username'])) {
                                             ");
                         $stmt->execute(array($_SESSION['username'], $_SESSION['user_id'], $_SESSION['user_id']));
                     
-                    $arr = [];
+                    $arr = array();
                     while ($result = $stmt->fetch()) {
                         $arr[$result['date_time']] = $result;
                     }
@@ -378,6 +396,11 @@ if(isset($_SESSION['username'])) {
                     foreach ($arr as $values) {
                         foreach ($values as $key => $val) {
                             if ($key == "username") {
+                                $number_of_messages_not_read = messages_status($values['user_id'], 0);
+                                $class = $number_of_messages_not_read > 0 ? "class='active-span'" : "" ;
+
+                                // if(isset($modify_messages_status)) {
+                                // }
                                 echo "
                                     <div class='friends-room'>
                                         <div class='username-box'>
@@ -387,6 +410,7 @@ if(isset($_SESSION['username'])) {
                                             <div class='username-info'>
                                             <a href='?u_id=$values[user_id]'>$values[username]</a>
                                             </div>
+                                            <span $class >$number_of_messages_not_read</span>
                                         </div>
                                     </div>
                                     ";
@@ -416,18 +440,23 @@ if(isset($_SESSION['username'])) {
                 <div class="output-box">
                     <?php
                         //===================================================================
-                        if (isset($_GET['u_id'])) {
-                            $check =  check_value("user_id", "users", "user_id", $_GET['u_id']);
+                        if (isset($_GET['u_id']) && ! empty($_GET['u_id'])) {
+                            $u_id = filter_var($_GET['u_id'], FILTER_SANITIZE_NUMBER_INT);
+                            
+                            $check =  check_value("user_id", "users", "user_id", $u_id);
                             if(! empty($check)) {
+                                $modify_messages_status = messages_status($u_id, 1);
+                               
+
                                 $stmt = $conn->prepare("SELECT message_info, from_id, date_time
                                                         FROM messages
                                                         WHERE (from_id = ? AND to_id = ?)
                                                         OR (from_id = ? AND to_id = ?)
                                                         ORDER BY date_time DESC
                                                         ");
-                                $stmt->execute(array($_SESSION['user_id'], $_GET['u_id'], $_GET['u_id'], $_SESSION['user_id']));
+                                $stmt->execute(array($_SESSION['user_id'], $u_id, $u_id, $_SESSION['user_id']));
                                 
-                                $arr = [];
+                                $arr = array();
                                 while ($result = $stmt->fetch()) {
                                     $arr[$result['date_time']] = $result;
                                 }
@@ -438,13 +467,16 @@ if(isset($_SESSION['username'])) {
                                                         OR (image_from_id = ? AND image_to_id = ?)
                                                         ORDER BY image_date_time
                                                         ");
-                                $stmt->execute(array($_SESSION['user_id'], $_GET['u_id'], $_GET['u_id'], $_SESSION['user_id']));
+                                $stmt->execute(array($_SESSION['user_id'], $u_id, $u_id, $_SESSION['user_id']));
                                 while ($result = $stmt->fetch()) {
                                         $arr[$result['image_date_time']] = $result;
                                     }
 
                                 ksort($arr);
-                                $last_message = end($arr)[2];
+
+                                if($arr != NULL) {
+                                    $last_message = end($arr)[2];
+                                } else $last_message = "";
 
                                 foreach ($arr as $value) {
                                     foreach ($value as $key => $val) {
@@ -452,52 +484,56 @@ if(isset($_SESSION['username'])) {
                                             if ($value['from_id'] != $_SESSION['user_id']) {
                                                 $id =  $last_message == $value[2] ? "id='last-message'" : '' ;
                                                 echo "
-                                                <div class='my' $id>
-                                                    <div class='my-messages'>
-                                                        <p>$value[message_info]</p>
+                                                    <div class='my' $id>
+                                                        <div class='my-messages'>
+                                                            <p>$value[message_info]</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                ";
+                                                    ";
                                             } else {
                                                 $id =  $last_message == $value[2] ? "id='last-message'" : '' ;
                                                 echo "
-                                                <div class='him' $id>
-                                                    <div class='him-messages'>
-                                                        <p>$value[message_info]</p>
+                                                    <div class='him' $id>
+                                                        <div class='him-messages'>
+                                                            <p>$value[message_info]</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                ";
+                                                    ";
                                             }
                                             break;
                                         } else if ($key == "image_name") {
                                             if ($value['image_from_id'] != $_SESSION['user_id']) {
                                                 $id =  $last_message == $value[2] ? "id='last-message'" : '' ;
                                                 echo "
-                                                <div class='my' $id>
-                                                    <div class='my-messages'>
-                                                        <div class='image'>
-                                                            <img src='$value[image_name]' alt='Photo'>
+                                                    <div class='my' $id>
+                                                        <div class='my-messages'>
+                                                            <div class='image'>
+                                                                <img src='$value[image_name]' alt='Photo'>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                ";
+                                                    ";
                                             } else {
                                                 $id =  $last_message == $value[2] ? "id='last-message'" : '' ;
                                                 echo "
-                                                <div class='him' $id>
-                                                    <div class='him-messages'>
-                                                        <div class='image'>
-                                                            <img src='$value[image_name]' alt='Photo'>
+                                                    <div class='him' $id>
+                                                        <div class='him-messages'>
+                                                            <div class='image'>
+                                                                <img src='$value[image_name]' alt='Photo'>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                ";
+                                                    ";
                                             }
                                             break;
                                         }
                                     }}
                                 }
+                                // header("refresh:0.1;url=$_SERVER[PHP_SELF]");
+        
+                                // exit();
                         }
+
                         // if(isset($files_errors)) {
                         //     foreach ($files_errors as $error) {
                         //         echo "
@@ -509,8 +545,10 @@ if(isset($_SESSION['username'])) {
                         //             ";
                         //     }
                         // }
-                        if (isset($_GET['g_id'])) {
-                            $check =  check_value("group_id", "groups", "group_id", $_GET['g_id']);
+                        if (isset($_GET['g_id']) && ! empty($_GET['g_id'])) {
+                            $g_id = filter_var($_GET['g_id'], FILTER_SANITIZE_NUMBER_INT);
+                               
+                            $check =  check_value("group_id", "group_members", "user_id", $g_id);
                             if(! empty($check)) {
                                 $stmt = $conn->prepare("SELECT m.message_info, m.from_id, m.date_time, u.username
                                                         FROM messages m
@@ -519,9 +557,9 @@ if(isset($_SESSION['username'])) {
                                                         ON  m.to_id = ? AND u.user_id = m.from_id
                                                         ORDER BY m.date_time
                                                         ");
-                                $stmt->execute(array($_GET['g_id']));
+                                $stmt->execute(array($g_id));
 
-                                $arr = [];
+                                $arr = array();
                                 while ($result = $stmt->fetch()) {
                                     $arr[$result['date_time']] = $result;
                                 }
@@ -532,13 +570,16 @@ if(isset($_SESSION['username'])) {
                                                         AND u.user_id = p.image_from_id
                                                         ORDER BY p.image_date_time
                                                         ");
-                                $stmt->execute(array($_GET['g_id']));
+                                $stmt->execute(array($g_id));
                                 while ($result = $stmt->fetch()) {
                                     $arr[$result['image_date_time']] = $result;
                                 }
 
                                 ksort($arr);
-                                $last_message = end($arr)[2];
+
+                                if($arr != NULL) {
+                                    $last_message = end($arr)[2];
+                                } else $last_message = "";
 
                                 foreach ($arr as $value) {
                                     foreach ($value as $key => $val) {
@@ -598,11 +639,15 @@ if(isset($_SESSION['username'])) {
             </div>
             <?php
                 if (isset($_GET['u_id']) || isset($_GET['g_id'])) {
-                    if(isset($_GET['u_id'])) {
-                        $check =  check_value("user_id", "users", "user_id", $_GET['u_id']);
+                    if (isset($_GET['u_id']) && ! empty($_GET['u_id'])) {
+                        $u_id = filter_var($_GET['u_id'], FILTER_SANITIZE_NUMBER_INT);
+                        
+                        $check =  check_value("user_id", "users", "user_id", $u_id);
                     }
-                    elseif(isset($_GET['g_id'])) {
-                        $check =  check_value("group_id", "groups", "group_id", $_GET['g_id']);
+                    elseif (isset($_GET['g_id']) && ! empty($_GET['g_id'])) {
+                        $g_id = filter_var($_GET['g_id'], FILTER_SANITIZE_NUMBER_INT);
+                           
+                        $check =  check_value("group_id", "group_members", "user_id", $g_id);
                     }
                     if(! empty($check)) {
                         echo "
